@@ -1,11 +1,11 @@
-version: '3.9'
+version: '3.8'
 
 services:
-  selenium-script:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  web:
+    build: .
+    ports:
+      - "8200:8200"
     volumes:
       - .:/app
-    stdin_open: true
-    tty: true
+    environment:
+      - PYTHONUNBUFFERED=1

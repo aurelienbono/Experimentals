@@ -1,53 +1,59 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-import time
+from webdriver_manager.chrome import ChromeDriverManager
 
+app = FastAPI()
 
-def login_and_unshorten(short_url, email, password):
-    # Configuration du WebDriver
-    service = Service('/usr/bin/chromedriver')  # Chemin vers Chromedriver (installé via Docker)
-    options = Options()
-    options.add_argument("--headless")  # Mode headless pour l'exécution sans interface graphique
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
+class UnshortenRequest(BaseModel):
+    short_url: str
 
-    # Lancer le navigateur
-    driver = webdriver.Chrome(service=service, options=options)
+# Hardcoded cookies
+cookies = [
+    {"name": "c_user", "value": "100010150669481", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": False, "sameSite": "no_restriction"},
+    {"name": "datr", "value": "8fg8Zuw5qSqDAmong7Ty3DIc", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": True, "sameSite": "no_restriction"},
+    {"name": "fr", "value": "136g7WrJBfJfcHQLV.AWXZs3drIym4K7wCAvxoD1rDjQ7zNIVz2QrgqQ.Bnr6Yz..AAA.0.0.Bnr6Yz.AWUIjjVHrOc", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": True, "sameSite": "no_restriction"},
+    {"name": "presence", "value": "C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1739565149759%2C%22v%22%3A1%7D", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": False, "sameSite": "unspecified"},
+    {"name": "ps_l", "value": "1", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": True, "sameSite": "lax"},
+    {"name": "ps_n", "value": "1", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": True, "sameSite": "no_restriction"},
+    {"name": "sb", "value": "rld5ZrMcvNUwqZLmFWy7ydtY", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": True, "sameSite": "no_restriction"},
+    {"name": "wd", "value": "1366x641", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": False, "sameSite": "lax"},
+    {"name": "xs", "value": "16%3A0y0rbB1gFYNOaw%3A2%3A1719228538%3A-1%3A479%3A%3AAcVtrEy3DqrNimZqZYjscmFk_D8GZWUXyqrRR3qOb0w", "domain": ".facebook.com", "path": "/", "secure": True, "httpOnly": True, "sameSite": "no_restriction"}
+]
+
+def unshorten_url_with_cookies(short_url: str) -> str:
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     try:
-        # Étape 1 : Accéder à Facebook Login
-        driver.get("https://www.facebook.com/login")
-        time.sleep(3)
-
-        # Entrer l'email
-        email_input = driver.find_element(By.ID, "email")
-        email_input.send_keys(email)
-
-        # Entrer le mot de passe
-        password_input = driver.find_element(By.ID, "pass")
-        password_input.send_keys(password)
-        password_input.send_keys(Keys.RETURN)
-        time.sleep(5)  # Attendre le chargement après connexion
-
-        # Étape 2 : Aller vers l'URL raccourcie
         driver.get(short_url)
-        time.sleep(5)  # Attendre la redirection
+        driver.delete_all_cookies()
 
-        # Capturer l'URL finale
-        original_url = driver.current_url
+        for cookie in cookies:
+            driver.add_cookie({
+                'name': cookie['name'],
+                'value': cookie['value'],
+                'domain': cookie['domain'],
+                'path': cookie['path'],
+                'expiry': cookie.get('expirationDate'),
+                'secure': cookie['secure'],
+                'httpOnly': cookie['httpOnly'],
+                'sameSite': cookie.get('sameSite')
+            })
+
+        driver.get(short_url)
+        expanded_url = driver.current_url
     finally:
         driver.quit()
 
-    return original_url
+    return expanded_url
 
-email = "237696330904"
-password = "Nath@love01"
-short_url = "https://fb.watch/w_icwPLBJM/"  
-
-original_url = login_and_unshorten(short_url, email, password)
-print("URL d'origine :", original_url)
+@app.post("/unshorten/")
+async def unshorten_url(request: UnshortenRequest):
+    try:
+        expanded_url = unshorten_url_with_cookies(request.short_url)
+        return {"expanded_url": expanded_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
