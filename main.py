@@ -45,17 +45,21 @@ def unshorten_url_with_cookies(short_url: str) -> str:
 
         logger.info("Ajout des cookies...")
         for cookie in cookies:
-            driver.add_cookie({
-                'name': cookie['name'],
-                'value': cookie['value'],
-                'domain': cookie['domain'],
-                'path': cookie['path'],
-                'expiry': cookie.get('expirationDate'),
-                'secure': cookie['secure'],
-                'httpOnly': cookie['httpOnly'],
-                'sameSite': cookie.get('sameSite')
-            })
-
+            try:
+                logger.info(f"Ajout du cookie : {cookie}")
+                driver.add_cookie({
+                    'name': cookie['name'],
+                    'value': cookie['value'],
+                    'domain': cookie['domain'],
+                    'path': cookie['path'],
+                    'expiry': cookie.get('expirationDate'),
+                    'secure': cookie['secure'],
+                    'httpOnly': cookie['httpOnly'],
+                    'sameSite': cookie.get('sameSite')
+                })
+            except Exception as e:
+                logger.error(f"Erreur lors de l'ajout du cookie {cookie['name']} : {e}")
+                
         logger.info("Rechargement de la page après ajout des cookies...")
         driver.get(short_url)
         expanded_url = driver.current_url
