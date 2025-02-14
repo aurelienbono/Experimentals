@@ -53,9 +53,9 @@ def unshorten_url_with_cookies(short_url: str) -> str:
                     'domain': cookie['domain'],
                     'path': cookie['path'],
                     'expiry': cookie.get('expirationDate'),
-                    'secure': cookie['secure'],
-                    'httpOnly': cookie['httpOnly'],
-                    'sameSite': cookie.get('sameSite')
+                    # 'secure': cookie['secure'],
+                    # 'httpOnly': cookie['httpOnly'],
+                    # 'sameSite': cookie.get('sameSite')
                 })
             except Exception as e:
                 logger.error(f"Erreur lors de l'ajout du cookie {cookie['name']} : {e}")
