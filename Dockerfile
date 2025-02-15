@@ -11,4 +11,4 @@ COPY . /app
 RUN pip install --no-cache-dir requests beautifulsoup4
 
 # Définir la commande à exécuter lorsque le conteneur démarre
-CMD ["python", "script.py"]
+CMD ["python", "main.py"]
