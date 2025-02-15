@@ -1,4 +1,6 @@
 import logging
+import pickle
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from selenium import webdriver
@@ -20,6 +22,18 @@ class UnshortenRequest(BaseModel):
     phone_number: str
     password: str
 
+def save_cookies(driver, path):
+    with open(path, 'wb') as filehandler:
+        pickle.dump(driver.get_cookies(), filehandler)
+    logger.info("Cookies sauvegardés.")
+
+def load_cookies(driver, path):
+    with open(path, 'rb') as cookiesfile:
+        cookies = pickle.load(cookiesfile)
+        for cookie in cookies:
+            driver.add_cookie(cookie)
+    logger.info("Cookies chargés.")
+
 def unshorten_url_with_login(short_url: str, phone_number: str, password: str) -> str:
     logger.info(f"Début du traitement pour l'URL : {short_url}")
 
@@ -32,12 +46,35 @@ def unshorten_url_with_login(short_url: str, phone_number: str, password: str) -
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     logger.info("Navigateur Chrome initialisé.")
 
+    cookie_path = 'facebook_cookies.pkl'
+
     try:
+        if os.path.exists(cookie_path):
+            logger.info("Chargement des cookies de session.")
+            driver.get("https://www.facebook.com/")
+            load_cookies(driver, cookie_path)
+            driver.refresh()
+        else:
+            logger.info("Connexion manuelle requise pour sauvegarder les cookies.")
+            # Connexion manuelle ici
+            driver.get("https://www.facebook.com/")
+            time.sleep(3)
+
+            phone_input = driver.find_element(By.ID, "email")
+            password_input = driver.find_element(By.ID, "pass")
+
+            phone_input.send_keys(phone_number)
+            password_input.send_keys(password)
+            password_input.send_keys(Keys.RETURN)
+
+            time.sleep(5)
+            save_cookies(driver, cookie_path)
+
         # Encoder l'URL de la vidéo pour l'utiliser dans l'URL de Facebook
         encoded_video_url = urllib.parse.quote(short_url, safe='')
         logger.info(f"URL encodée : {encoded_video_url}")
 
-        # Accéder à Facebook et se connecter avec l'URL de redirection
+        # Accéder à Facebook avec l'URL de redirection
         logger.info(f"Accès à Facebook avec redirection vers : {short_url}")
         driver.get(f"https://www.facebook.com/login/?next={encoded_video_url}")
         logger.info("Page de connexion Facebook chargée.")
@@ -45,24 +82,6 @@ def unshorten_url_with_login(short_url: str, phone_number: str, password: str) -
         # Attendre que la page de connexion s'affiche
         time.sleep(3)
         logger.info("Attente terminée après le chargement de la page de connexion.")
-
-        # Remplir les informations de connexion
-        phone_input = driver.find_element(By.ID, "email")  # ID du champ email (modifié si nécessaire)
-        password_input = driver.find_element(By.ID, "pass")  # ID du champ mot de passe (modifié si nécessaire)
-        logger.info("Champs de saisie pour email et mot de passe localisés.")
-
-        phone_input.send_keys(phone_number)
-        logger.info("Numéro de téléphone saisi.")
-        password_input.send_keys(password)
-        logger.info("Mot de passe saisi.")
-
-        # Soumettre le formulaire
-        password_input.send_keys(Keys.RETURN)
-        logger.info("Formulaire de connexion soumis.")
-
-        # Attendre la redirection après la connexion
-        time.sleep(5)
-        logger.info("Attente terminée après la soumission du formulaire.")
 
         # Récupérer l'URL finale
         expanded_url = driver.current_url
