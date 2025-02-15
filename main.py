@@ -54,6 +54,7 @@ def unshorten_url_with_login(short_url: str, phone_number: str, password: str) -
             driver.get("https://www.facebook.com/")
             load_cookies(driver, cookie_path)
             driver.refresh()
+            time.sleep(5)  # Attendre pour s'assurer que la session est active
         else:
             logger.info("Connexion manuelle requise pour sauvegarder les cookies.")
             driver.get("https://www.facebook.com/")
@@ -66,15 +67,20 @@ def unshorten_url_with_login(short_url: str, phone_number: str, password: str) -
             password_input.send_keys(password)
             password_input.send_keys(Keys.RETURN)
 
-            time.sleep(5)
+            time.sleep(10)  # Augmenter le délai pour s'assurer que la connexion est complète
             save_cookies(driver, cookie_path)
+
+        # Vérifiez si la connexion a réussi
+        if "login" in driver.current_url or "two_step_verification" in driver.current_url:
+            raise Exception("La connexion a échoué ou nécessite une vérification en deux étapes.")
 
         # Accéder directement à l'URL raccourcie après la connexion
         logger.info(f"Accès à l'URL raccourcie : {short_url}")
         driver.get(short_url)
 
+        logger.info(f"temps d'attente")
         # Attendre que la redirection se produise
-        time.sleep(5)
+        time.sleep(15)  # Augmenter le délai pour s'assurer que toutes les redirections se produisent
 
         # Récupérer l'URL finale
         expanded_url = driver.current_url
