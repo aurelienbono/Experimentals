@@ -56,7 +56,6 @@ def unshorten_url_with_login(short_url: str, phone_number: str, password: str) -
             driver.refresh()
         else:
             logger.info("Connexion manuelle requise pour sauvegarder les cookies.")
-            # Connexion manuelle ici
             driver.get("https://www.facebook.com/")
             time.sleep(3)
 
@@ -70,18 +69,12 @@ def unshorten_url_with_login(short_url: str, phone_number: str, password: str) -
             time.sleep(5)
             save_cookies(driver, cookie_path)
 
-        # Encoder l'URL de la vidéo pour l'utiliser dans l'URL de Facebook
-        encoded_video_url = urllib.parse.quote(short_url, safe='')
-        logger.info(f"URL encodée : {encoded_video_url}")
+        # Accéder directement à l'URL raccourcie après la connexion
+        logger.info(f"Accès à l'URL raccourcie : {short_url}")
+        driver.get(short_url)
 
-        # Accéder à Facebook avec l'URL de redirection
-        logger.info(f"Accès à Facebook avec redirection vers : {short_url}")
-        driver.get(f"https://www.facebook.com/login/?next={encoded_video_url}")
-        logger.info("Page de connexion Facebook chargée.")
-
-        # Attendre que la page de connexion s'affiche
-        time.sleep(3)
-        logger.info("Attente terminée après le chargement de la page de connexion.")
+        # Attendre que la redirection se produise
+        time.sleep(5)
 
         # Récupérer l'URL finale
         expanded_url = driver.current_url
